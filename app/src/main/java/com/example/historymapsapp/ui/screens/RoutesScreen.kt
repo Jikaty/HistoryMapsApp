@@ -1,0 +1,265 @@
+package com.example.historymapsapp.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.historymapsapp.data.RouteRepository
+import com.example.historymapsapp.model.Route
+import com.example.historymapsapp.ui.theme.BackgroundSepia
+import com.example.historymapsapp.ui.theme.DarkBlue
+import com.example.historymapsapp.ui.theme.HistoryMapsAppTheme
+import com.example.historymapsapp.ui.theme.TextDark
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RoutesScreen() {
+    val routes = RouteRepository.getRoutes()
+    
+    Scaffold(
+        containerColor = BackgroundSepia,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Маршруты",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 22.sp
+                        ),
+                        color = TextDark
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Меню", tint = TextDark)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { }) {
+                        Icon(Icons.Default.Search, contentDescription = "Поиск", tint = TextDark)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = BackgroundSepia
+                )
+            )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = BackgroundSepia,
+                tonalElevation = 0.dp
+            ) {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { },
+                    icon = { Icon(Icons.Outlined.Home, contentDescription = null) },
+                    label = { Text("Главная") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = DarkBlue,
+                        selectedTextColor = DarkBlue,
+                        unselectedIconColor = Color.Gray,
+                        indicatorColor = Color.Transparent
+                    )
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { },
+                    icon = { Icon(Icons.Outlined.Place, contentDescription = null) },
+                    label = { Text("Карта") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { },
+                    icon = { Icon(Icons.Outlined.List, contentDescription = null) },
+                    label = { Text("Таймлайн") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { },
+                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                    label = { Text("Профиль") }
+                )
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            // Era Filters
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                item { EraChip(text = "XVIII век", isSelected = true) }
+                item { EraChip(text = "XIX век", isSelected = false) }
+                item { EraChip(text = "XX век", isSelected = false) }
+                item {
+                    // Filter icon placeholder
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable { },
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = android.R.drawable.ic_menu_sort_by_size),
+                                contentDescription = "Фильтры",
+                                modifier = Modifier.size(20.dp),
+                                tint = TextDark
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Routes List
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(routes) { route ->
+                    RouteCard(route)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EraChip(text: String, isSelected: Boolean) {
+    Surface(
+        color = if (isSelected) DarkBlue else Color.White.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(20.dp),
+        border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)),
+        modifier = Modifier.clickable { }
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            fontSize = 14.sp,
+            color = if (isSelected) Color.White else TextDark,
+            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+fun RouteCard(route: Route) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clickable { /* Handle route click */ },
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box {
+            // Route Background Image
+            Image(
+                painter = painterResource(id = route.imageRes),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.3f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.6f)
+                            )
+                        )
+                    )
+            )
+
+            // Route Info
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = route.title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp
+                    )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    RouteStat(text = "${route.distance} км")
+                    RouteStat(text = "${route.points} точек")
+                    RouteStat(text = "~ ${route.time}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RouteStat(text: String) {
+    Text(
+        text = text,
+        color = Color.White.copy(alpha = 0.9f),
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Normal
+    )
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun RoutesScreenPreview() {
+    HistoryMapsAppTheme {
+        RoutesScreen()
+    }
+}
+
+
