@@ -26,19 +26,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.historymapsapp.data.RouteRepository
 import com.example.historymapsapp.model.Route
+import com.example.historymapsapp.ui.navigation.ScreenType
 import com.example.historymapsapp.ui.theme.BackgroundSepia
 import com.example.historymapsapp.ui.theme.DarkBlue
-import com.example.historymapsapp.ui.theme.HistoryMapsAppTheme
 import com.example.historymapsapp.ui.theme.TextDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutesScreen() {
+fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
     val routes = RouteRepository.getRoutes()
     
     Scaffold(
@@ -84,25 +83,14 @@ fun RoutesScreen() {
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = DarkBlue,
                         selectedTextColor = DarkBlue,
-                        unselectedIconColor = Color.Gray,
                         indicatorColor = Color.Transparent
                     )
                 )
+                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") })
+                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.List, null) }, label = { Text("Таймлайн") })
                 NavigationBarItem(
                     selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Outlined.Place, contentDescription = null) },
-                    label = { Text("Карта") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Outlined.List, contentDescription = null) },
-                    label = { Text("Таймлайн") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
+                    onClick = { onNavigate(ScreenType.PROFILE) },
                     icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                     label = { Text("Профиль") }
                 )
@@ -114,7 +102,6 @@ fun RoutesScreen() {
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Era Filters
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,11 +114,8 @@ fun RoutesScreen() {
                 item { EraChip(text = "XIX век", isSelected = false) }
                 item { EraChip(text = "XX век", isSelected = false) }
                 item {
-                    // Filter icon placeholder
                     Surface(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clickable { },
+                        modifier = Modifier.size(40.dp).clickable { },
                         shape = RoundedCornerShape(12.dp),
                         color = Color.White.copy(alpha = 0.4f),
                         border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
@@ -148,7 +132,6 @@ fun RoutesScreen() {
                 }
             }
 
-            // Routes List
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
@@ -186,12 +169,11 @@ fun RouteCard(route: Route) {
         modifier = Modifier
             .fillMaxWidth()
             .height(180.dp)
-            .clickable { /* Handle route click */ },
+            .clickable { },
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box {
-            // Route Background Image
             Image(
                 painter = painterResource(id = route.imageRes),
                 contentDescription = null,
@@ -199,7 +181,6 @@ fun RouteCard(route: Route) {
                 contentScale = ContentScale.Crop
             )
 
-            // Gradient Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -214,7 +195,6 @@ fun RouteCard(route: Route) {
                     )
             )
 
-            // Route Info
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -235,31 +215,11 @@ fun RouteCard(route: Route) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    RouteStat(text = "${route.distance} км")
-                    RouteStat(text = "${route.points} точек")
-                    RouteStat(text = "~ ${route.time}")
+                    Text("${route.distance} км", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+                    Text("${route.points} точек", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+                    Text("~ ${route.time}", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
                 }
             }
         }
     }
 }
-
-@Composable
-fun RouteStat(text: String) {
-    Text(
-        text = text,
-        color = Color.White.copy(alpha = 0.9f),
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Normal
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun RoutesScreenPreview() {
-    HistoryMapsAppTheme {
-        RoutesScreen()
-    }
-}
-
-

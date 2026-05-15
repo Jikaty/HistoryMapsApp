@@ -15,17 +15,19 @@ import com.example.historymapsapp.ui.theme.BackgroundSepia
 fun AppNavigation(sharedPref: SharedPreferences) {
     val isFirstLaunch = sharedPref.getBoolean("isFirstLaunch", true)
 
-    // Состояние экрана
     var currentScreenType by remember {
         mutableStateOf(if (isFirstLaunch) ScreenType.START else ScreenType.ROUTES)
     }
 
-    // Фабрика
-    val factory = remember {
-        ScreenFactory(onNavigate = {
+    val onNavigate: (ScreenType) -> Unit = { screenType ->
+        if (currentScreenType == ScreenType.START && screenType == ScreenType.ROUTES) {
             sharedPref.edit().putBoolean("isFirstLaunch", false).apply()
-            currentScreenType = ScreenType.ROUTES
-        })
+        }
+        currentScreenType = screenType
+    }
+
+    val factory = remember(onNavigate) {
+        ScreenFactory(onNavigate = onNavigate)
     }
 
     Surface(

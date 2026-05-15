@@ -1,31 +1,38 @@
 package com.example.historymapsapp.ui.navigation
 
 import androidx.compose.runtime.Composable
+import com.example.historymapsapp.ui.screens.ProfileScreen
 import com.example.historymapsapp.ui.screens.RoutesScreen
 import com.example.historymapsapp.ui.screens.StartScreen
 
-enum class ScreenType { START, ROUTES }
+enum class ScreenType { START, ROUTES, PROFILE }
 
 interface Screen {
     @Composable
     fun Content()
 }
 
-class StartDestination(private val onNavigate: () -> Unit) : Screen {
+class StartDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
     @Composable
-    override fun Content() = StartScreen(onNavigate)
+    override fun Content() = StartScreen(onNavigate = { onNavigate(ScreenType.ROUTES) })
 }
 
-class RoutesDestination : Screen {
+class RoutesDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
     @Composable
-    override fun Content() = RoutesScreen()
+    override fun Content() = RoutesScreen(onNavigate = onNavigate)
 }
 
-class ScreenFactory(private val onNavigate: () -> Unit) {
+class ProfileDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
+    @Composable
+    override fun Content() = ProfileScreen(onNavigate = onNavigate)
+}
+
+class ScreenFactory(private val onNavigate: (ScreenType) -> Unit) {
     fun createScreen(type: ScreenType): Screen {
         return when (type) {
             ScreenType.START -> StartDestination(onNavigate)
-            ScreenType.ROUTES -> RoutesDestination()
+            ScreenType.ROUTES -> RoutesDestination(onNavigate)
+            ScreenType.PROFILE -> ProfileDestination(onNavigate)
         }
     }
 }
