@@ -86,7 +86,12 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                         indicatorColor = Color.Transparent
                     )
                 )
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") })
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.MAP) }, 
+                    icon = { Icon(Icons.Outlined.Place, null) }, 
+                    label = { Text("Карта") }
+                )
                 NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.List, null) }, label = { Text("Таймлайн") })
                 NavigationBarItem(
                     selected = false,

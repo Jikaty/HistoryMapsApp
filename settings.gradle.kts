@@ -16,6 +16,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Репозиторий Яндекс Карт
+        maven {
+            url = uri("https://maven.yandex.cloud/nexus/content/repositories/releases/")
+        }
     }
 }
 
