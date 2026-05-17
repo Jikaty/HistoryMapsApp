@@ -33,12 +33,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.historymapsapp.ui.navigation.ScreenType
 import com.example.historymapsapp.ui.theme.BackgroundSepia
 import com.example.historymapsapp.ui.theme.DarkBlue
+import com.example.historymapsapp.ui.theme.TextDark
 import com.google.android.gms.location.LocationServices
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
-import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.MapObject
+import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.image.ImageProvider
@@ -55,10 +58,25 @@ fun MapScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
     
-    // Храним ссылку на слой местоположения
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
 
-    // Управление жизненным циклом MapView
+    // КРИТИЧНО: Держим сильные ссылки на маркеры в памяти, чтобы GC их не удалил
+    val placemarksStrongRefs = remember { mutableListOf<PlacemarkMapObject>() }
+
+    // Надежный слушатель нажатий (сохраняем через remember, чтобы не удалил GC)
+    val tapListener = remember {
+        object : MapObjectTapListener {
+            override fun onMapObjectTap(mapObject: MapObject, point: Point): Boolean {
+                val index = mapObject.userData as? Int
+                if (index != null) {
+                    viewModel.setSelectedSight(index)
+                    onNavigate(ScreenType.SIGHT_DETAILS)
+                }
+                return true // Событие обработано
+            }
+        }
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -74,10 +92,8 @@ fun MapScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        
         mapView.onStart()
         MapKitFactory.getInstance().onStart()
-
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onStop()
@@ -85,7 +101,6 @@ fun MapScreen(
         }
     }
 
-    // Запрос разрешений
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -99,6 +114,7 @@ fun MapScreen(
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPermission) {
             viewModel.startTracking(fusedLocationClient)
+            userLocationLayer?.isVisible = true
         } else {
             permissionLauncher.launch(
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -111,7 +127,7 @@ fun MapScreen(
             NavigationBar(containerColor = BackgroundSepia, tonalElevation = 0.dp) {
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.ROUTES) }, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("Главная") })
                 NavigationBarItem(selected = true, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") }, colors = NavigationBarItemDefaults.colors(selectedIconColor = DarkBlue, indicatorColor = Color.Transparent, selectedTextColor = DarkBlue))
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, label = { Text("Таймлайн") })
+                NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, label = { Text("Таймлайн") }) // Поправил навигацию на таймлайн если нужно
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Профиль") })
             }
         }
@@ -122,37 +138,39 @@ fun MapScreen(
                     mapView.apply {
                         map.setMapStyle(RETRO_MAP_STYLE)
                         
-                        // Инициализируем слой местоположения
                         val layer = MapKitFactory.getInstance().createUserLocationLayer(mapWindow)
                         layer.isVisible = true
                         layer.isHeadingEnabled = true
                         userLocationLayer = layer
 
                         map.move(
-                            CameraPosition(Point(59.9386, 30.3141), 13f, 0f, 0f),
+                            CameraPosition(Point(59.9414, 30.3141), 13.5f, 0f, 0f),
                             Animation(Animation.Type.SMOOTH, 0f),
                             null
                         )
 
-                        map.mapObjects.addPolyline(Polyline(viewModel.routePoints)).apply {
-                            strokeWidth = 3f
-                            setStrokeColor(android.graphics.Color.parseColor("#2c3e50"))
-                        }
+                        // Добавляем один общий слушатель на коллекцию (САМЫЙ НАДЕЖНЫЙ СПОСОБ)
+                        map.mapObjects.addTapListener(tapListener)
 
+                        // Добавляем точки один раз при создании
+                        placemarksStrongRefs.clear()
                         viewModel.sights.forEachIndexed { index, sight ->
-                            map.mapObjects.addPlacemark(sight.location).apply {
+                            val placemark = map.mapObjects.addPlacemark(sight.location)
+                            placemark.apply {
                                 setIcon(createNumberedMarker(index + 1))
+                                userData = index // Индекс для навигации
                             }
+                            // Сохраняем сильную ссылку на маркер
+                            placemarksStrongRefs.add(placemark)
                         }
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                update = { /* update пуст, чтобы не сбрасывать состояние объектов */ }
             )
 
-            // КНОПКА ГЕОЛОКАЦИИ (Стрелка в синем круге с белой каймой)
             SmallFloatingActionButton(
                 onClick = {
-                    // Пытаемся взять точку из слоя Яндекса или из стейта ViewModel
                     val target = userLocationLayer?.cameraPosition()?.target ?: state.userLocation
                     target?.let { point ->
                         mapView.map.move(
@@ -164,9 +182,9 @@ fun MapScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 145.dp, end = 16.dp)
+                    .padding(bottom = 120.dp, end = 16.dp)
                     .size(52.dp)
-                    .border(2.dp, Color.White, CircleShape) // Белая кайма как на скриншоте
+                    .border(2.dp, Color.White, CircleShape)
                     .zIndex(1f),
                 containerColor = DarkBlue,
                 contentColor = Color.White,
@@ -174,12 +192,11 @@ fun MapScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.NearMe, 
-                    contentDescription = "Где я?",
+                    contentDescription = "Моё положение",
                     modifier = Modifier.size(24.dp)
                 )
             }
 
-            // ИНФО-КАРТОЧКА
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -190,16 +207,8 @@ fun MapScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    val currentSight = viewModel.sights.getOrNull(state.currentSightIndex)
-                    Text(
-                        text = "Текущая точка: ${currentSight?.name ?: "Маршрут"}",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "Пройдено: ${viewModel.getFormattedDistance()}",
-                        color = DarkBlue,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = "Достопримечательности центра", style = MaterialTheme.typography.titleMedium, color = TextDark)
+                    Text(text = "Пройдено сегодня: ${viewModel.getFormattedDistance()}", color = DarkBlue, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -214,9 +223,18 @@ private fun createNumberedMarker(number: Int): ImageProvider {
         color = android.graphics.Color.parseColor("#2c3e50")
         isAntiAlias = true
     }
+    // Основной круг
     canvas.drawCircle(size / 2f, size / 2f, size / 2.2f, paint)
+    
+    // Белая рамка
     paint.color = android.graphics.Color.WHITE
-    paint.textSize = 40f
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 4f
+    canvas.drawCircle(size / 2f, size / 2f, size / 2.2f, paint)
+
+    // Текст
+    paint.style = Paint.Style.FILL
+    paint.textSize = 36f
     paint.textAlign = Paint.Align.CENTER
     val xPos = canvas.width / 2f
     val yPos = (canvas.height / 2f - (paint.descent() + paint.ascent()) / 2f)

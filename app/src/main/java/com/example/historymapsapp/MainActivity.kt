@@ -11,7 +11,7 @@ import com.yandex.mapkit.MapKitFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Устанавливаем ключ ПЕРВЫМ делом, даже до super.onCreate
+
         MapKitFactory.setApiKey("ac475df4-01de-4573-83eb-61e565e78d17")
         
         super.onCreate(savedInstanceState)
