@@ -37,7 +37,9 @@ fun SightDetailScreen(
     onNavigate: (ScreenType) -> Unit
 ) {
     val sights = viewModel.sights
-    // Состояние пейджера для реализации листания (свайпов)
+    // Получаем источник перехода из ViewModel
+    val sourceScreen = viewModel.state.value.sourceScreen
+    
     val pagerState = rememberPagerState(initialPage = initialIndex) { sights.size }
 
     Scaffold(
@@ -54,7 +56,8 @@ fun SightDetailScreen(
                 sight = sight,
                 current = page + 1,
                 total = sights.size,
-                onBack = { onNavigate(ScreenType.MAP) }
+                // ВОЗВРАЩАЕМСЯ НА ЭКРАН-ИСТОЧНИК
+                onBack = { onNavigate(sourceScreen) }
             )
         }
     }
@@ -81,7 +84,6 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // Заглушка, пока не подгружены фотографии
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -142,7 +144,6 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Основное описание
             Text(
                 text = sight.description.ifEmpty { "Описание достопримечательности скоро будет добавлено." },
                 fontSize = 16.sp,
@@ -154,7 +155,6 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Блок реформы
             Text(
                 text = "Как реформа изменила это место?",
                 fontWeight = FontWeight.Bold,
@@ -171,7 +171,6 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Карточка "Интересный факт"
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White.copy(alpha = 0.5f),
@@ -200,7 +199,6 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Кнопка Аудиогид
             Button(
                 onClick = { /* Запуск аудиогида */ },
                 modifier = Modifier

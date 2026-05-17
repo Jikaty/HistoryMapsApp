@@ -93,7 +93,12 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                     icon = { Icon(Icons.Outlined.Place, null) }, 
                     label = { Text("Карта") }
                 )
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.List, null) }, label = { Text("Таймлайн") })
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.TIMELINE) }, // Активировали переход
+                    icon = { Icon(Icons.Outlined.List, null) }, 
+                    label = { Text("Таймлайн") }
+                )
                 NavigationBarItem(
                     selected = false,
                     onClick = { onNavigate(ScreenType.PROFILE) },

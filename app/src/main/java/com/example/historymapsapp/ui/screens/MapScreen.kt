@@ -67,7 +67,8 @@ fun MapScreen(
             override fun onMapObjectTap(mapObject: MapObject, point: Point): Boolean {
                 val index = mapObject.userData as? Int
                 if (index != null) {
-                    viewModel.setSelectedSight(index)
+                    // Передаем ScreenType.MAP как источник
+                    viewModel.setSelectedSight(index, ScreenType.MAP)
                     onNavigate(ScreenType.SIGHT_DETAILS)
                 }
                 return true
@@ -127,12 +128,17 @@ fun MapScreen(
                 NavigationBarItem(
                     selected = true, 
                     onClick = { }, 
-                    icon = { Icon(Icons.Filled.Place, null) }, // Залитая иконка
+                    icon = { Icon(Icons.Filled.Place, null) },
                     label = { Text("Карта") }, 
                     colors = NavigationBarItemDefaults.colors(selectedIconColor = DarkBlue, indicatorColor = Color.Transparent, selectedTextColor = DarkBlue)
                 )
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, label = { Text("Таймлайн") })
-                NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Профиль") })
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.TIMELINE) },
+                    icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, 
+                    label = { Text("Таймлайн") }
+                )
+                NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Профиль") } )
             }
         }
     ) { innerPadding ->
@@ -184,7 +190,7 @@ fun MapScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 16.dp, end = 16.dp) // Опустил кнопку в самый низ
+                    .padding(bottom = 16.dp, end = 16.dp)
                     .size(52.dp)
                     .border(2.dp, Color.White, CircleShape)
                     .zIndex(1f),

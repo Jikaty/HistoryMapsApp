@@ -7,9 +7,10 @@ import com.example.historymapsapp.ui.screens.ProfileScreen
 import com.example.historymapsapp.ui.screens.RoutesScreen
 import com.example.historymapsapp.ui.screens.SightDetailScreen
 import com.example.historymapsapp.ui.screens.StartScreen
+import com.example.historymapsapp.ui.screens.TimelineScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-enum class ScreenType { START, ROUTES, MAP, PROFILE, SIGHT_DETAILS }
+enum class ScreenType { START, ROUTES, MAP, PROFILE, SIGHT_DETAILS, TIMELINE }
 
 interface Screen {
     @Composable
@@ -54,6 +55,14 @@ class ProfileDestination(private val onNavigate: (ScreenType) -> Unit) : Screen 
     override fun Content() = ProfileScreen(onNavigate = onNavigate)
 }
 
+class TimelineDestination(
+    private val onNavigate: (ScreenType) -> Unit,
+    private val mapViewModel: MapViewModel
+) : Screen {
+    @Composable
+    override fun Content() = TimelineScreen(onNavigate = onNavigate, viewModel = mapViewModel)
+}
+
 class ScreenFactory(private val onNavigate: (ScreenType) -> Unit) {
     
     @Composable
@@ -67,6 +76,7 @@ class ScreenFactory(private val onNavigate: (ScreenType) -> Unit) {
             ScreenType.MAP -> MapDestination(onNavigate, mapViewModel)
             ScreenType.SIGHT_DETAILS -> SightDetailsDestination(onNavigate, mapViewModel)
             ScreenType.PROFILE -> ProfileDestination(onNavigate)
+            ScreenType.TIMELINE -> TimelineDestination(onNavigate, mapViewModel)
         }
     }
 }
