@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
@@ -59,11 +60,8 @@ fun MapScreen(
     val mapView = remember { MapView(context) }
     
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
-
-    // КРИТИЧНО: Держим сильные ссылки на маркеры в памяти, чтобы GC их не удалил
     val placemarksStrongRefs = remember { mutableListOf<PlacemarkMapObject>() }
 
-    // Надежный слушатель нажатий (сохраняем через remember, чтобы не удалил GC)
     val tapListener = remember {
         object : MapObjectTapListener {
             override fun onMapObjectTap(mapObject: MapObject, point: Point): Boolean {
@@ -72,7 +70,7 @@ fun MapScreen(
                     viewModel.setSelectedSight(index)
                     onNavigate(ScreenType.SIGHT_DETAILS)
                 }
-                return true // Событие обработано
+                return true
             }
         }
     }
@@ -126,8 +124,14 @@ fun MapScreen(
         bottomBar = {
             NavigationBar(containerColor = BackgroundSepia, tonalElevation = 0.dp) {
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.ROUTES) }, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("Главная") })
-                NavigationBarItem(selected = true, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") }, colors = NavigationBarItemDefaults.colors(selectedIconColor = DarkBlue, indicatorColor = Color.Transparent, selectedTextColor = DarkBlue))
-                NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, label = { Text("Таймлайн") }) // Поправил навигацию на таймлайн если нужно
+                NavigationBarItem(
+                    selected = true, 
+                    onClick = { }, 
+                    icon = { Icon(Icons.Filled.Place, null) }, // Залитая иконка
+                    label = { Text("Карта") }, 
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = DarkBlue, indicatorColor = Color.Transparent, selectedTextColor = DarkBlue)
+                )
+                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, label = { Text("Таймлайн") })
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Профиль") })
             }
         }
@@ -149,24 +153,22 @@ fun MapScreen(
                             null
                         )
 
-                        // Добавляем один общий слушатель на коллекцию (САМЫЙ НАДЕЖНЫЙ СПОСОБ)
                         map.mapObjects.addTapListener(tapListener)
 
-                        // Добавляем точки один раз при создании
                         placemarksStrongRefs.clear()
                         viewModel.sights.forEachIndexed { index, sight ->
                             val placemark = map.mapObjects.addPlacemark(sight.location)
                             placemark.apply {
                                 setIcon(createNumberedMarker(index + 1))
-                                userData = index // Индекс для навигации
+                                userData = index
+                                addTapListener(tapListener)
                             }
-                            // Сохраняем сильную ссылку на маркер
                             placemarksStrongRefs.add(placemark)
                         }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-                update = { /* update пуст, чтобы не сбрасывать состояние объектов */ }
+                update = { }
             )
 
             SmallFloatingActionButton(
@@ -182,7 +184,7 @@ fun MapScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 120.dp, end = 16.dp)
+                    .padding(bottom = 16.dp, end = 16.dp) // Опустил кнопку в самый низ
                     .size(52.dp)
                     .border(2.dp, Color.White, CircleShape)
                     .zIndex(1f),
@@ -196,21 +198,6 @@ fun MapScreen(
                     modifier = Modifier.size(24.dp)
                 )
             }
-
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-                    .fillMaxWidth()
-                    .zIndex(1f),
-                elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Достопримечательности центра", style = MaterialTheme.typography.titleMedium, color = TextDark)
-                    Text(text = "Пройдено сегодня: ${viewModel.getFormattedDistance()}", color = DarkBlue, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
         }
     }
 }
@@ -223,16 +210,11 @@ private fun createNumberedMarker(number: Int): ImageProvider {
         color = android.graphics.Color.parseColor("#2c3e50")
         isAntiAlias = true
     }
-    // Основной круг
     canvas.drawCircle(size / 2f, size / 2f, size / 2.2f, paint)
-    
-    // Белая рамка
     paint.color = android.graphics.Color.WHITE
     paint.style = Paint.Style.STROKE
     paint.strokeWidth = 4f
     canvas.drawCircle(size / 2f, size / 2f, size / 2.2f, paint)
-
-    // Текст
     paint.style = Paint.Style.FILL
     paint.textSize = 36f
     paint.textAlign = Paint.Align.CENTER
