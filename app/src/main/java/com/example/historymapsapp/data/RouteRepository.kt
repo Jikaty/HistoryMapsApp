@@ -11,7 +11,8 @@ object RouteRepository {
                 distance = "2,5",
                 points = 10,
                 time = "2 ч",
-                imageRes = R.drawable.route_peter
+                imageRes = R.drawable.route_peter,
+                sightIndices = listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
             ),
             Route(
                 title = "Столица Великих реформ:\nбанки, вокзалы и доходные дома",

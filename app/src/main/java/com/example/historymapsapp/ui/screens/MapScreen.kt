@@ -10,41 +10,50 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.historymapsapp.ui.navigation.ScreenType
 import com.example.historymapsapp.ui.theme.BackgroundSepia
 import com.example.historymapsapp.ui.theme.DarkBlue
-import com.example.historymapsapp.ui.theme.TextDark
 import com.google.android.gms.location.LocationServices
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.map.PlacemarkMapObject
+import com.yandex.mapkit.map.PolylineMapObject
 import com.yandex.mapkit.mapview.MapView
+import com.yandex.mapkit.transport.TransportFactory
+import com.yandex.mapkit.transport.masstransit.Route
+import com.yandex.mapkit.transport.masstransit.RouteOptions
+import com.yandex.mapkit.transport.masstransit.Session
+import com.yandex.mapkit.transport.masstransit.TimeOptions
 import com.yandex.mapkit.user_location.UserLocationLayer
+import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
 
 @Composable
@@ -58,21 +67,74 @@ fun MapScreen(
     
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
+    val map = remember { mapView.mapWindow.map }
     
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
     val placemarksStrongRefs = remember { mutableListOf<PlacemarkMapObject>() }
+    var routePolyline by remember { mutableStateOf<PolylineMapObject?>(null) }
+
+    // Используем MasstransitFactory для пешеходного роутера
+    val pedestrianRouter = remember { TransportFactory.getInstance().createPedestrianRouter() }
+    var pedestrianSession by remember { mutableStateOf<Session?>(null) }
 
     val tapListener = remember {
-        object : MapObjectTapListener {
-            override fun onMapObjectTap(mapObject: MapObject, point: Point): Boolean {
-                val index = mapObject.userData as? Int
-                if (index != null) {
-                    // Передаем ScreenType.MAP как источник
-                    viewModel.setSelectedSight(index, ScreenType.MAP)
-                    onNavigate(ScreenType.SIGHT_DETAILS)
-                }
-                return true
+        MapObjectTapListener { mapObject, _ ->
+            val index = mapObject.userData as? Int
+            if (index != null) {
+                viewModel.setSelectedSight(index, ScreenType.MAP)
+                onNavigate(ScreenType.SIGHT_DETAILS)
             }
+            true
+        }
+    }
+
+    fun submitRequest(points: List<Point>) {
+        if (points.size < 2) return
+
+        val requestPoints = points.map { 
+            RequestPoint(it, RequestPointType.WAYPOINT, null, null) 
+        }
+        
+        pedestrianSession?.cancel()
+        pedestrianSession = pedestrianRouter.requestRoutes(
+            requestPoints,
+            TimeOptions(),
+            RouteOptions(),
+            object : Session.RouteListener {
+                override fun onMasstransitRoutes(routes: MutableList<Route>) {
+                    if (routes.isNotEmpty()) {
+                        routePolyline?.let { map.mapObjects.remove(it) }
+                        val polyline = Polyline(routes[0].geometry.points)
+                        routePolyline = map.mapObjects.addPolyline(polyline).apply {
+                            strokeWidth = 5f
+                            setStrokeColor(android.graphics.Color.parseColor("#3498db"))
+                            outlineWidth = 1f
+                            outlineColor = android.graphics.Color.WHITE
+                        }
+                        
+                        if (points.isNotEmpty()) {
+                            map.move(
+                                CameraPosition(points[0], 14f, 0f, 0f),
+                                Animation(Animation.Type.SMOOTH, 0.8f),
+                                null
+                            )
+                        }
+                    }
+                }
+
+                override fun onMasstransitRoutesError(error: Error) {
+                    android.util.Log.e("MapScreen", "Route error: ${error.javaClass.simpleName}")
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(state.activeRoutePoints) {
+        state.activeRoutePoints?.let { points ->
+            submitRequest(points)
+        } ?: run {
+            routePolyline?.let { map.mapObjects.remove(it) }
+            routePolyline = null
         }
     }
 
@@ -97,6 +159,7 @@ fun MapScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onStop()
             MapKitFactory.getInstance().onStop()
+            pedestrianSession?.cancel()
         }
     }
 
@@ -171,17 +234,41 @@ fun MapScreen(
                             }
                             placemarksStrongRefs.add(placemark)
                         }
+                        
+                        state.activeRoutePoints?.let { submitRequest(it) }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { }
             )
 
+            if (state.activeRoutePoints != null) {
+                Surface(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.TopCenter),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.White.copy(alpha = 0.9f),
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Маршрут активен", color = Color.Black)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { viewModel.clearRoute() }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Сбросить", tint = Color.Red)
+                        }
+                    }
+                }
+            }
+
             SmallFloatingActionButton(
                 onClick = {
                     val target = userLocationLayer?.cameraPosition()?.target ?: state.userLocation
                     target?.let { point ->
-                        mapView.map.move(
+                        map.move(
                             CameraPosition(point, 16f, 0f, 0f),
                             Animation(Animation.Type.SMOOTH, 0.8f),
                             null

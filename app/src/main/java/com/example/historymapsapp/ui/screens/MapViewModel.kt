@@ -17,7 +17,8 @@ data class MapState(
     val totalDistance: Float = 0f,
     val selectedSightIndex: Int = 0,
     val sourceScreen: ScreenType = ScreenType.MAP,
-    val selectedTimelineYear: Int = 1850 // Сохраняем выбранный год в ViewModel
+    val selectedTimelineYear: Int = 1850,
+    val activeRoutePoints: List<Point>? = null
 )
 
 class MapViewModel : ViewModel() {
@@ -217,7 +218,7 @@ class MapViewModel : ViewModel() {
         Sight(
             "Русский музей", Point(59.9388, 30.3324),
             year = 1895,
-            description = "Русский музей был основан в конце XIX века как первый государственный музей русского искусства. Его коллекция объединила произведения живописи, скульптуры и декоративного искусства со всей страны.\n" +
+            description = "Русский музей был основан в конце XIX века as первый государственный музей русского искусства. Его коллекция объединила произведения живописи, скульптуры и декоративного искусства со всей страны.\n" +
                     "Создание музея отражало рост интереса к национальной культуре и формирование культурной идентичности России.",
             reformHistory = "Развитие образования, искусства и общественной культуры сделало Петербург центром художественной жизни страны, а музей — важнейшим культурным пространством города.",
             interestingFact = "Коллекция Русского музея насчитывает более 400 тысяч произведений искусства — это крупнейшее собрание русского искусства в мире.",
@@ -324,6 +325,21 @@ class MapViewModel : ViewModel() {
 
     fun setTimelineYear(year: Int) {
         _state.value = _state.value.copy(selectedTimelineYear = year)
+    }
+
+    fun selectRoute(index: Int) {
+        val pointsCount = when(index) {
+            0 -> 10
+            1 -> 12
+            2 -> 15
+            else -> sights.size
+        }
+        val routePoints = sights.take(pointsCount).map { it.location }
+        _state.value = _state.value.copy(activeRoutePoints = routePoints)
+    }
+
+    fun clearRoute() {
+        _state.value = _state.value.copy(activeRoutePoints = null)
     }
 
     @SuppressLint("MissingPermission")

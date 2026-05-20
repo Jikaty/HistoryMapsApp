@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import com.example.historymapsapp.ui.navigation.AppNavigation
 import com.example.historymapsapp.ui.theme.HistoryMapsAppTheme
 import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.transport.TransportFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,6 +19,8 @@ class MainActivity : ComponentActivity() {
         
         // Инициализируем MapKit
         MapKitFactory.initialize(this)
+        // Для работы с маршрутами инициализируем TransportFactory
+
         
         val sharedPref = getPreferences(Context.MODE_PRIVATE)
         enableEdgeToEdge()

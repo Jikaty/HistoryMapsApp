@@ -22,9 +22,12 @@ class StartDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
     override fun Content() = StartScreen(onNavigate = { onNavigate(ScreenType.ROUTES) })
 }
 
-class RoutesDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
+class RoutesDestination(
+    private val onNavigate: (ScreenType) -> Unit,
+    private val mapViewModel: MapViewModel
+) : Screen {
     @Composable
-    override fun Content() = RoutesScreen(onNavigate = onNavigate)
+    override fun Content() = RoutesScreen(onNavigate = onNavigate, viewModel = mapViewModel)
 }
 
 class MapDestination(
@@ -67,12 +70,11 @@ class ScreenFactory(private val onNavigate: (ScreenType) -> Unit) {
     
     @Composable
     fun createScreen(type: ScreenType): Screen {
-        // Используем общую ViewModel для карты и деталей
         val mapViewModel: MapViewModel = viewModel()
         
         return when (type) {
             ScreenType.START -> StartDestination(onNavigate)
-            ScreenType.ROUTES -> RoutesDestination(onNavigate)
+            ScreenType.ROUTES -> RoutesDestination(onNavigate, mapViewModel)
             ScreenType.MAP -> MapDestination(onNavigate, mapViewModel)
             ScreenType.SIGHT_DETAILS -> SightDetailsDestination(onNavigate, mapViewModel)
             ScreenType.PROFILE -> ProfileDestination(onNavigate)

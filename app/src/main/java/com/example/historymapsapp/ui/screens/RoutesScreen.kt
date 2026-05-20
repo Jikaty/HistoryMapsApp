@@ -7,7 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -38,7 +38,10 @@ import com.example.historymapsapp.ui.theme.TextDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
+fun RoutesScreen(
+    onNavigate: (ScreenType) -> Unit,
+    viewModel: MapViewModel
+) {
     val routes = RouteRepository.getRoutes()
     
     Scaffold(
@@ -95,7 +98,7 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                 )
                 NavigationBarItem(
                     selected = false, 
-                    onClick = { onNavigate(ScreenType.TIMELINE) }, // Активировали переход
+                    onClick = { onNavigate(ScreenType.TIMELINE) },
                     icon = { Icon(Icons.Outlined.List, null) }, 
                     label = { Text("Таймлайн") }
                 )
@@ -148,8 +151,11 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(routes) { route ->
-                    RouteCard(route)
+                itemsIndexed(routes) { index, route ->
+                    RouteCard(route) {
+                        viewModel.selectRoute(index)
+                        onNavigate(ScreenType.MAP)
+                    }
                 }
             }
         }
@@ -175,12 +181,12 @@ fun EraChip(text: String, isSelected: Boolean) {
 }
 
 @Composable
-fun RouteCard(route: Route) {
+fun RouteCard(route: Route, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(180.dp)
-            .clickable { },
+            .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
