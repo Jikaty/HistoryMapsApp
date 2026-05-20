@@ -43,7 +43,7 @@ fun RoutesScreen(
     viewModel: MapViewModel
 ) {
     val routes = RouteRepository.getRoutes()
-    
+
     Scaffold(
         containerColor = BackgroundSepia,
         topBar = {
@@ -91,15 +91,15 @@ fun RoutesScreen(
                     )
                 )
                 NavigationBarItem(
-                    selected = false, 
-                    onClick = { onNavigate(ScreenType.MAP) }, 
-                    icon = { Icon(Icons.Outlined.Place, null) }, 
+                    selected = false,
+                    onClick = { onNavigate(ScreenType.MAP) },
+                    icon = { Icon(Icons.Outlined.Place, null) },
                     label = { Text("Карта") }
                 )
                 NavigationBarItem(
-                    selected = false, 
+                    selected = false,
                     onClick = { onNavigate(ScreenType.TIMELINE) },
-                    icon = { Icon(Icons.Outlined.List, null) }, 
+                    icon = { Icon(Icons.Outlined.List, null) },
                     label = { Text("Таймлайн") }
                 )
                 NavigationBarItem(
@@ -153,7 +153,7 @@ fun RoutesScreen(
             ) {
                 itemsIndexed(routes) { index, route ->
                     RouteCard(route) {
-                        viewModel.selectRoute(index)
+                        viewModel.selectRoute(index)  // ← Вот это главное!
                         onNavigate(ScreenType.MAP)
                     }
                 }

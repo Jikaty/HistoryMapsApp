@@ -9,6 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.historymapsapp.ui.screens.MapViewModel
 import com.example.historymapsapp.ui.theme.BackgroundSepia
 
 @Composable
@@ -26,8 +28,11 @@ fun AppNavigation(sharedPref: SharedPreferences) {
         currentScreenType = screenType
     }
 
-    val factory = remember(onNavigate) {
-        ScreenFactory(onNavigate = onNavigate)
+    // ✅ Создаём ViewModel один раз и переиспользуем её
+    val mapViewModel: MapViewModel = viewModel()
+
+    val factory = remember(onNavigate, mapViewModel) {
+        ScreenFactory(onNavigate = onNavigate, mapViewModel = mapViewModel)
     }
 
     Surface(
