@@ -38,24 +38,24 @@ import com.example.historymapsapp.ui.theme.DarkBlue
 import com.google.android.gms.location.LocationServices
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
-import com.yandex.mapkit.RequestPoint
-import com.yandex.mapkit.RequestPointType
+import com.yandex.mapkit.directions.DirectionsFactory
+import com.yandex.mapkit.directions.driving.DrivingOptions
+import com.yandex.mapkit.directions.driving.DrivingRoute
+import com.yandex.mapkit.directions.driving.DrivingSession
+import com.yandex.mapkit.directions.driving.VehicleOptions
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.MapObjectTapListener
-import com.yandex.mapkit.map.PlacemarkMapObject
-import com.yandex.mapkit.map.PolylineMapObject
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.mapview.MapView
-import com.yandex.mapkit.transport.TransportFactory
-import com.yandex.mapkit.transport.masstransit.Route
-import com.yandex.mapkit.transport.masstransit.RouteOptions
-import com.yandex.mapkit.transport.masstransit.Session
-import com.yandex.mapkit.transport.masstransit.TimeOptions
 import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
+import com.yandex.mapkit.directions.driving.DrivingRouterType
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     onNavigate: (ScreenType) -> Unit,
@@ -70,12 +70,13 @@ fun MapScreen(
     val map = remember { mapView.mapWindow.map }
 
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
-    val placemarksStrongRefs = remember { mutableListOf<PlacemarkMapObject>() }
-    var routePolyline by remember { mutableStateOf<PolylineMapObject?>(null) }
 
-    // Используем MasstransitFactory для пешеходного роутера
-    val pedestrianRouter = remember { TransportFactory.getInstance().createPedestrianRouter() }
-    var pedestrianSession by remember { mutableStateOf<Session?>(null) }
+    // Храним геометрию полученного маршрута, чтобы AndroidView мог её нарисовать
+    var currentRouteGeometry by remember { mutableStateOf<Polyline?>(null) }
+
+    // Инициализируем автомобильный роутер (DirectionsFactory)
+    val drivingRouter = remember { DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE)}
+    var drivingSession by remember { mutableStateOf<DrivingSession?>(null) }
 
     val tapListener = remember {
         MapObjectTapListener { mapObject, _ ->
@@ -88,65 +89,47 @@ fun MapScreen(
         }
     }
 
-    fun submitRequest(points: List<Point>) {
-        if (points.size < 2) {
-            android.util.Log.d("MapScreen", "submitRequest: Недостаточно точек (${points.size})")
-            return
-        }
+    // Слушаем изменения активного маршрута из ViewModel
+    LaunchedEffect(state.activeRoutePoints) {
+        val points = state.activeRoutePoints
+        android.util.Log.d("MapScreen", "activeRoutePoints изменился: ${points?.size} точек")
 
-        val requestPoints = points.map {
-            RequestPoint(it, RequestPointType.WAYPOINT, null, null)
-        }
+        if (points != null && points.size >= 2) {
+            val requestPoints = points.map {
+                RequestPoint(it, RequestPointType.WAYPOINT, null, null)
+            }
 
-        try {
-            pedestrianSession?.cancel()
-            pedestrianSession = pedestrianRouter.requestRoutes(
+            drivingSession?.cancel() // Отменяем старый запрос, если он выполнялся
+
+            drivingSession = drivingRouter.requestRoutes(
                 requestPoints,
-                TimeOptions(),
-                RouteOptions(),
-                object : Session.RouteListener {
-                    override fun onMasstransitRoutes(routes: MutableList<Route>) {
-                        android.util.Log.d("MapScreen", "onMasstransitRoutes: получено ${routes.size} маршрутов")
+                DrivingOptions(),
+                VehicleOptions(),
+                object : DrivingSession.DrivingRouteListener {
+                    override fun onDrivingRoutes(routes: MutableList<DrivingRoute>) {
+                        android.util.Log.d("MapScreen", "Яндекс вернул ${routes.size} авто-маршрутов")
                         if (routes.isNotEmpty()) {
-                            routePolyline?.let { map.mapObjects.remove(it) }
-                            val polyline = Polyline(routes[0].geometry.points)
-                            routePolyline = map.mapObjects.addPolyline(polyline).apply {
-                                strokeWidth = 5f
-                                setStrokeColor(android.graphics.Color.parseColor("#3498db"))
-                                outlineWidth = 1f
-                                outlineColor = android.graphics.Color.WHITE
-                            }
+                            // Сохраняем геометрию первого (самого оптимального) маршрута
+                            currentRouteGeometry = routes[0].geometry
 
-                            if (points.isNotEmpty()) {
-                                map.move(
-                                    CameraPosition(points[0], 14f, 0f, 0f),
-                                    Animation(Animation.Type.SMOOTH, 0.8f),
-                                    null
-                                )
-                            }
+                            // Фокусируем камеру на начало пути
+                            map.move(
+                                CameraPosition(points[0], 14f, 0f, 0f),
+                                Animation(Animation.Type.SMOOTH, 0.8f),
+                                null
+                            )
                         }
                     }
 
-                    override fun onMasstransitRoutesError(error: Error) {
-                        android.util.Log.e("MapScreen", "Route error: ${error.javaClass.simpleName}")
+                    override fun onDrivingRoutesError(error: Error) {
+                        android.util.Log.e("MapScreen", "Ошибка авто-роутера: ${error.javaClass.simpleName}")
                     }
                 }
             )
-        } catch (e: Exception) {
-            android.util.Log.e("MapScreen", "submitRequest exception: ${e.message}", e)
-        }
-    }
-
-    // ✅ Выполняем запрос в LaunchedEffect с delay чтобы не заблокировать UI
-    LaunchedEffect(state.activeRoutePoints) {
-        android.util.Log.d("MapScreen", "activeRoutePoints changed: ${state.activeRoutePoints?.size}")
-        state.activeRoutePoints?.let { points ->
-            // Даём небольшую задержку, чтобы карта готова была к запросу
-            kotlinx.coroutines.delay(100)
-            submitRequest(points)
-        } ?: run {
-            routePolyline?.let { map.mapObjects.remove(it) }
-            routePolyline = null
+        } else {
+            // Если маршрут сбросили
+            drivingSession?.cancel()
+            currentRouteGeometry = null
         }
     }
 
@@ -171,7 +154,7 @@ fun MapScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onStop()
             MapKitFactory.getInstance().onStop()
-            pedestrianSession?.cancel()
+            drivingSession?.cancel()
         }
     }
 
@@ -224,7 +207,7 @@ fun MapScreen(
                         map.setMapStyle(RETRO_MAP_STYLE)
 
                         val layer = MapKitFactory.getInstance().createUserLocationLayer(mapWindow)
-                        layer.isVisible = true
+                        layer.isVisible = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                         layer.isHeadingEnabled = true
                         userLocationLayer = layer
 
@@ -233,23 +216,36 @@ fun MapScreen(
                             Animation(Animation.Type.SMOOTH, 0f),
                             null
                         )
-
-                        map.mapObjects.addTapListener(tapListener)
-
-                        placemarksStrongRefs.clear()
-                        viewModel.sights.forEachIndexed { index, sight ->
-                            val placemark = map.mapObjects.addPlacemark(sight.location)
-                            placemark.apply {
-                                setIcon(createNumberedMarker(index + 1))
-                                userData = index
-                                addTapListener(tapListener)
-                            }
-                            placemarksStrongRefs.add(placemark)
-                        }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-                update = { }
+                update = { view ->
+                    val currentMap = view.mapWindow.map
+
+                    // Полностью очищаем карту перед рендером нового кадра данных
+                    currentMap.mapObjects.clear()
+                    currentMap.mapObjects.addTapListener(tapListener)
+
+                    // 1. Отрисовка геометрии автомобильного маршрута, если она есть
+                    currentRouteGeometry?.let { geometry ->
+                        currentMap.mapObjects.addPolyline(geometry).apply {
+                            strokeWidth = 5f
+                            setStrokeColor(android.graphics.Color.parseColor("#3498db"))
+                            outlineWidth = 1.5f
+                            outlineColor = android.graphics.Color.WHITE
+                        }
+                        android.util.Log.d("MapScreen", "Линия авто-маршрута добавлена на карту")
+                    }
+
+                    // 2. Отрисовка всех достопримечательностей
+                    viewModel.sights.forEachIndexed { index, sight ->
+                        currentMap.mapObjects.addPlacemark(sight.location).apply {
+                            setIcon(createNumberedMarker(index + 1))
+                            userData = index
+                            addTapListener(tapListener)
+                        }
+                    }
+                }
             )
 
             if (state.activeRoutePoints != null) {
