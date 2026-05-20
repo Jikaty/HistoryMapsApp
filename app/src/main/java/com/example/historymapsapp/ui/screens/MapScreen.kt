@@ -64,11 +64,11 @@ fun MapScreen(
     val context = LocalContext.current
     val state by viewModel.state
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
     val map = remember { mapView.mapWindow.map }
-    
+
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
     val placemarksStrongRefs = remember { mutableListOf<PlacemarkMapObject>() }
     var routePolyline by remember { mutableStateOf<PolylineMapObject?>(null) }
@@ -89,48 +89,60 @@ fun MapScreen(
     }
 
     fun submitRequest(points: List<Point>) {
-        if (points.size < 2) return
-
-        val requestPoints = points.map { 
-            RequestPoint(it, RequestPointType.WAYPOINT, null, null) 
+        if (points.size < 2) {
+            android.util.Log.d("MapScreen", "submitRequest: Недостаточно точек (${points.size})")
+            return
         }
-        
-        pedestrianSession?.cancel()
-        pedestrianSession = pedestrianRouter.requestRoutes(
-            requestPoints,
-            TimeOptions(),
-            RouteOptions(),
-            object : Session.RouteListener {
-                override fun onMasstransitRoutes(routes: MutableList<Route>) {
-                    if (routes.isNotEmpty()) {
-                        routePolyline?.let { map.mapObjects.remove(it) }
-                        val polyline = Polyline(routes[0].geometry.points)
-                        routePolyline = map.mapObjects.addPolyline(polyline).apply {
-                            strokeWidth = 5f
-                            setStrokeColor(android.graphics.Color.parseColor("#3498db"))
-                            outlineWidth = 1f
-                            outlineColor = android.graphics.Color.WHITE
-                        }
-                        
-                        if (points.isNotEmpty()) {
-                            map.move(
-                                CameraPosition(points[0], 14f, 0f, 0f),
-                                Animation(Animation.Type.SMOOTH, 0.8f),
-                                null
-                            )
+
+        val requestPoints = points.map {
+            RequestPoint(it, RequestPointType.WAYPOINT, null, null)
+        }
+
+        try {
+            pedestrianSession?.cancel()
+            pedestrianSession = pedestrianRouter.requestRoutes(
+                requestPoints,
+                TimeOptions(),
+                RouteOptions(),
+                object : Session.RouteListener {
+                    override fun onMasstransitRoutes(routes: MutableList<Route>) {
+                        android.util.Log.d("MapScreen", "onMasstransitRoutes: получено ${routes.size} маршрутов")
+                        if (routes.isNotEmpty()) {
+                            routePolyline?.let { map.mapObjects.remove(it) }
+                            val polyline = Polyline(routes[0].geometry.points)
+                            routePolyline = map.mapObjects.addPolyline(polyline).apply {
+                                strokeWidth = 5f
+                                setStrokeColor(android.graphics.Color.parseColor("#3498db"))
+                                outlineWidth = 1f
+                                outlineColor = android.graphics.Color.WHITE
+                            }
+
+                            if (points.isNotEmpty()) {
+                                map.move(
+                                    CameraPosition(points[0], 14f, 0f, 0f),
+                                    Animation(Animation.Type.SMOOTH, 0.8f),
+                                    null
+                                )
+                            }
                         }
                     }
-                }
 
-                override fun onMasstransitRoutesError(error: Error) {
-                    android.util.Log.e("MapScreen", "Route error: ${error.javaClass.simpleName}")
+                    override fun onMasstransitRoutesError(error: Error) {
+                        android.util.Log.e("MapScreen", "Route error: ${error.javaClass.simpleName}")
+                    }
                 }
-            }
-        )
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("MapScreen", "submitRequest exception: ${e.message}", e)
+        }
     }
 
+    // ✅ Выполняем запрос в LaunchedEffect с delay чтобы не заблокировать UI
     LaunchedEffect(state.activeRoutePoints) {
+        android.util.Log.d("MapScreen", "activeRoutePoints changed: ${state.activeRoutePoints?.size}")
         state.activeRoutePoints?.let { points ->
+            // Даём небольшую задержку, чтобы карта готова была к запросу
+            kotlinx.coroutines.delay(100)
             submitRequest(points)
         } ?: run {
             routePolyline?.let { map.mapObjects.remove(it) }
@@ -189,16 +201,16 @@ fun MapScreen(
             NavigationBar(containerColor = BackgroundSepia, tonalElevation = 0.dp) {
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.ROUTES) }, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("Главная") })
                 NavigationBarItem(
-                    selected = true, 
-                    onClick = { }, 
+                    selected = true,
+                    onClick = { },
                     icon = { Icon(Icons.Filled.Place, null) },
-                    label = { Text("Карта") }, 
+                    label = { Text("Карта") },
                     colors = NavigationBarItemDefaults.colors(selectedIconColor = DarkBlue, indicatorColor = Color.Transparent, selectedTextColor = DarkBlue)
                 )
                 NavigationBarItem(
-                    selected = false, 
+                    selected = false,
                     onClick = { onNavigate(ScreenType.TIMELINE) },
-                    icon = { Icon(Icons.AutoMirrored.Outlined.List, null) }, 
+                    icon = { Icon(Icons.AutoMirrored.Outlined.List, null) },
                     label = { Text("Таймлайн") }
                 )
                 NavigationBarItem(selected = false, onClick = { onNavigate(ScreenType.PROFILE) }, icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Профиль") } )
@@ -207,10 +219,10 @@ fun MapScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             AndroidView(
-                factory = { 
+                factory = {
                     mapView.apply {
                         map.setMapStyle(RETRO_MAP_STYLE)
-                        
+
                         val layer = MapKitFactory.getInstance().createUserLocationLayer(mapWindow)
                         layer.isVisible = true
                         layer.isHeadingEnabled = true
@@ -234,8 +246,6 @@ fun MapScreen(
                             }
                             placemarksStrongRefs.add(placemark)
                         }
-                        
-                        state.activeRoutePoints?.let { submitRequest(it) }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -286,7 +296,7 @@ fun MapScreen(
                 shape = CircleShape
             ) {
                 Icon(
-                    imageVector = Icons.Default.NearMe, 
+                    imageVector = Icons.Default.NearMe,
                     contentDescription = "Моё положение",
                     modifier = Modifier.size(24.dp)
                 )

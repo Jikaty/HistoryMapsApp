@@ -334,7 +334,9 @@ class MapViewModel : ViewModel() {
             2 -> 15
             else -> sights.size
         }
+        android.util.Log.d("MapViewModel", "selectRoute($index): выбрано $pointsCount достопримечательностей")
         val routePoints = sights.take(pointsCount).map { it.location }
+        android.util.Log.d("MapViewModel", "routePoints размер: ${routePoints.size}")
         _state.value = _state.value.copy(activeRoutePoints = routePoints)
     }
 
