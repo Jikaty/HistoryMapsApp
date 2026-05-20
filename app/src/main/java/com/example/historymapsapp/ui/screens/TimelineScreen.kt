@@ -10,11 +10,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +28,11 @@ import com.example.historymapsapp.ui.navigation.ScreenType
 import com.example.historymapsapp.ui.theme.BackgroundSepia
 import com.example.historymapsapp.ui.theme.DarkBlue
 import com.example.historymapsapp.ui.theme.TextDark
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Place
 
 @Composable
 fun TimelineScreen(
@@ -40,21 +40,21 @@ fun TimelineScreen(
     viewModel: MapViewModel
 ) {
     val years = listOf(1700, 1750, 1800, 1850, 1900, 1950, 2000)
-    var selectedYear by remember { mutableStateOf(1850) }
     
-    // Состояние для управления прокруткой списка
+    // БЕРЕМ ВЫБРАННЫЙ ГОД ИЗ VIEWMODEL, ЧТОБЫ ОН СОХРАНЯЛСЯ
+    val state by viewModel.state
+    val selectedYear = state.selectedTimelineYear
+    
     val listState = rememberLazyListState()
 
-    // Сбрасываем прокрутку в начало при изменении выбранного года
     LaunchedEffect(selectedYear) {
         listState.scrollToItem(0)
     }
 
-    // --- ЛОГИКА ФИЛЬТРАЦИИ ---
-    // Выбираем достопримечательности, год которых попадает в текущий 50-летний интервал
-    val filteredSights = viewModel.sights.filter { sight ->
-        sight.year >= selectedYear && sight.year < selectedYear + 50
-    }
+    // Фильтрация достопримечательностей по году и сортировка по возрастанию даты
+    val filteredSights = viewModel.sights
+        .filter { sight -> sight.year >= selectedYear && sight.year < selectedYear + 50 }
+        .sortedBy { it.year }
 
     Scaffold(
         containerColor = BackgroundSepia,
@@ -89,12 +89,13 @@ fun TimelineScreen(
                     TimelineYearSelector(
                         years = years,
                         selectedYear = selectedYear,
-                        onYearSelected = { selectedYear = it }
+                        // ЗАПИСЫВАЕМ ГОД В VIEWMODEL ПРИ КЛИКЕ
+                        onYearSelected = { viewModel.setTimelineYear(it) }
                     )
                 }
             }
 
-            // --- ПРОКРУЧИВАЕМАЯ ЧАСТЬ (Описание эпохи и Карточки) ---
+            // --- ПРОКРУЧИВАЕМАЯ ЧАСТЬ ---
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
@@ -130,7 +131,7 @@ fun TimelineScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         Text(
-                            text = "Достопримечательности периода",
+                            text = "Достопримечательности",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextDark
@@ -139,7 +140,7 @@ fun TimelineScreen(
 
                         if (filteredSights.isEmpty()) {
                             Text(
-                                text = "В этот период значимых объектов пока не найдено.",
+                                text = "Для этого периода значимых объектов пока не найдено.",
                                 fontSize = 14.sp,
                                 color = Color.Gray,
                                 modifier = Modifier.padding(vertical = 12.dp)
@@ -148,14 +149,13 @@ fun TimelineScreen(
                     }
                 }
 
-                // Список ОТФИЛЬТРОВАННЫХ карточек
                 itemsIndexed(filteredSights) { _, sight ->
                     Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)) {
                         SightTimelineCard(
                             sight = sight,
                             onClick = {
-                                // Находим оригинальный индекс объекта для корректной работы Pager
                                 val originalIndex = viewModel.sights.indexOf(sight)
+                                // Передаем ScreenType.TIMELINE, чтобы кнопка назад знала, куда вернуться
                                 viewModel.setSelectedSight(originalIndex, ScreenType.TIMELINE)
                                 onNavigate(ScreenType.SIGHT_DETAILS)
                             }
@@ -273,13 +273,15 @@ fun SightTimelineCard(sight: Sight, onClick: () -> Unit) {
                 Text(
                     text = sight.name,
                     color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Год постройки: ${sight.year} · Подробнее →",
+                    text = "Год: ${sight.year} · Подробнее →",
                     color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 14.sp
+                    fontSize = 13.sp
                 )
             }
         }
