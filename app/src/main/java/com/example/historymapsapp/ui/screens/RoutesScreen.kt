@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Home
@@ -78,7 +79,7 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                 NavigationBarItem(
                     selected = true,
                     onClick = { },
-                    icon = { Icon(Icons.Outlined.Home, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
                     label = { Text("Главная") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = DarkBlue,
@@ -86,8 +87,18 @@ fun RoutesScreen(onNavigate: (ScreenType) -> Unit) {
                         indicatorColor = Color.Transparent
                     )
                 )
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") })
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.List, null) }, label = { Text("Таймлайн") })
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.MAP) }, 
+                    icon = { Icon(Icons.Outlined.Place, null) }, 
+                    label = { Text("Карта") }
+                )
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.TIMELINE) }, // Активировали переход
+                    icon = { Icon(Icons.Outlined.List, null) }, 
+                    label = { Text("Таймлайн") }
+                )
                 NavigationBarItem(
                     selected = false,
                     onClick = { onNavigate(ScreenType.PROFILE) },

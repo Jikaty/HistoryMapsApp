@@ -1,13 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.example.historymapsapp"
-    compileSdk {
-        version = release(36)
-    }
+    // Поднимаем до 36, как требуют библиотеки
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.historymapsapp"
@@ -32,6 +32,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
+    }
+
     buildFeatures {
         compose = true
     }
@@ -46,6 +53,17 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    
+    // ДОБАВЛЯЕМ расширенные иконки для MyLocation и NearMe
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Yandex Maps SDK
+    implementation(libs.yandex.maps)
+    // Location
+    implementation(libs.play.services.location)
+    
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

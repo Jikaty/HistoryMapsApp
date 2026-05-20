@@ -66,8 +66,18 @@ fun ProfileScreen(onNavigate: (ScreenType) -> Unit) {
                     icon = { Icon(Icons.Outlined.Home, null) },
                     label = { Text("Главная") }
                 )
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.Place, null) }, label = { Text("Карта") })
-                NavigationBarItem(selected = false, onClick = { }, icon = { Icon(Icons.Outlined.List, null) }, label = { Text("Таймлайн") })
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.MAP) }, 
+                    icon = { Icon(Icons.Outlined.Place, null) }, 
+                    label = { Text("Карта") }
+                )
+                NavigationBarItem(
+                    selected = false, 
+                    onClick = { onNavigate(ScreenType.TIMELINE) }, 
+                    icon = { Icon(Icons.Outlined.List, null) }, 
+                    label = { Text("Таймлайн") }
+                )
                 NavigationBarItem(
                     selected = true,
                     onClick = { },
