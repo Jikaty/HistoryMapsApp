@@ -51,12 +51,12 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Стейт для хранения проинициализированного SDK
+
     var sdk by remember { mutableStateOf<YandexAuthSdk?>(null) }
-    // Флаг загрузки, пока SDK создается в фоне
+
     var isSdkLoading by remember { mutableStateOf(true) }
 
-    // Безопасная инициализация SDK в фоновом потоке IO
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             try {
@@ -69,7 +69,7 @@ fun ProfileScreen(
         }
     }
 
-    // Регистрируем лаунчер динамически. Если SDK еще не готов, он будет null.
+
     val launcher = sdk?.let { readySdk ->
         rememberLauncherForActivityResult(readySdk.contract) { result ->
             when (result) {
@@ -172,7 +172,7 @@ fun ProfileScreen(
             contentAlignment = Alignment.Center
         ) {
             if (isSdkLoading) {
-                // Красивый индикатор загрузки, пока SDK инициализируется в фоне
+
                 CircularProgressIndicator(color = DarkBlue)
             } else {
                 LazyColumn(

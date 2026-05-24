@@ -71,7 +71,7 @@ fun MapScreen(
     val drivingRouter = remember { DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE) }
     var drivingSession by remember { mutableStateOf<DrivingSession?>(null) }
 
-    // Оптимизация: Кэшируем иконки маркеров, чтобы не пересоздавать Bitmaps при каждой рекомпозиции
+
     val markerIcons = remember(viewModel.sights) {
         viewModel.sights.indices.map { index ->
             createNumberedMarker(index + 1)
@@ -89,7 +89,7 @@ fun MapScreen(
         }
     }
 
-    // Слушаем изменения активного маршрута
+
     LaunchedEffect(state.activeRoutePoints) {
         val points = state.activeRoutePoints
         android.util.Log.d("MapScreen", "activeRoutePoints изменился: ${points?.size} точек")
@@ -129,7 +129,7 @@ fun MapScreen(
         }
     }
 
-    // Управление жизненным циклом MapKit
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -155,7 +155,7 @@ fun MapScreen(
         }
     }
 
-    // Разрешения на геопозицию
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -241,10 +241,10 @@ fun MapScreen(
                 update = { view ->
                     val currentMap = view.mapWindow.map
 
-                    // Очищаем только объекты (слушатель тапов на самой коллекции mapObjects при clear() не удаляется)
+
                     currentMap.mapObjects.clear()
 
-                    // 1. Отрисовка геометрии маршрута
+
                     currentRouteGeometry?.let { geometry ->
                         currentMap.mapObjects.addPolyline(geometry).apply {
                             strokeWidth = 5f
@@ -254,13 +254,13 @@ fun MapScreen(
                         }
                     }
 
-                    // 2. Отрисовка достопримечательностей с использованием закэшированных иконок
+
                     viewModel.sights.forEachIndexed { index, sight ->
                         if (index < markerIcons.size) {
                             currentMap.mapObjects.addPlacemark(sight.location).apply {
                                 setIcon(markerIcons[index])
                                 userData = index
-                                // Слушатель на уровне конкретного Placemark (опционально, так как есть общий на mapObjects)
+
                                 addTapListener(tapListener)
                             }
                         }
@@ -268,12 +268,12 @@ fun MapScreen(
                 }
             )
 
-            // UI поверх карты (информационная плашка)
+
             if (state.activeRoutePoints != null) {
                 Surface(
                     modifier = Modifier
                         .padding(16.dp)
-                        .fillMaxWidth(0.9f) // Сделаем плашку чуть шире для кнопки
+                        .fillMaxWidth(0.9f)
                         .align(Alignment.TopCenter),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White.copy(alpha = 0.95f),
@@ -298,7 +298,7 @@ fun MapScreen(
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Если навигация еще не запущена, показываем кнопку "СТАРТ"
+
                             if (!state.isNavigationActive) {
                                 Button(
                                     onClick = { viewModel.startNavigation() },
@@ -310,7 +310,7 @@ fun MapScreen(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                             } else {
-                                // Если навигация запущена, можно показать кнопку "Стоп"
+
                                 Button(
                                     onClick = { viewModel.stopNavigation() },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),

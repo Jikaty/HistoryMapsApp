@@ -28,7 +28,7 @@ fun AppNavigation(sharedPref: SharedPreferences) {
         currentScreenType = screenType
     }
 
-    // ✅ Создаём ViewModel один раз и переиспользуем её
+
     val mapViewModel: MapViewModel = viewModel()
 
     val factory = remember(onNavigate, mapViewModel) {

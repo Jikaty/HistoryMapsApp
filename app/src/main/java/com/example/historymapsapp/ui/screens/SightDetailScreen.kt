@@ -37,7 +37,7 @@ fun SightDetailScreen(
     onNavigate: (ScreenType) -> Unit
 ) {
     val sights = viewModel.sights
-    // Получаем источник перехода из ViewModel
+
     val sourceScreen = viewModel.state.value.sourceScreen
     
     val pagerState = rememberPagerState(initialPage = initialIndex) { sights.size }
@@ -56,7 +56,7 @@ fun SightDetailScreen(
                 sight = sight,
                 current = page + 1,
                 total = sights.size,
-                // ВОЗВРАЩАЕМСЯ НА ЭКРАН-ИСТОЧНИК
+
                 onBack = { onNavigate(sourceScreen) }
             )
         }
@@ -70,7 +70,7 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Верхний блок: Картинка и кнопка Назад
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,7 +91,7 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
                 )
             }
 
-            // Кнопка Назад поверх фото
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -105,7 +105,7 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
                 }
             }
 
-            // Индикатор страниц (например, "2 из 32")
+
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -123,7 +123,7 @@ fun SightContent(sight: Sight, current: Int, total: Int, onBack: () -> Unit) {
             }
         }
 
-        // Текстовый контент
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()

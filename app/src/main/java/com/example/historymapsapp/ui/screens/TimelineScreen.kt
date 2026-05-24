@@ -41,7 +41,7 @@ fun TimelineScreen(
 ) {
     val years = listOf(1700, 1750, 1800, 1850, 1900, 1950, 2000)
     
-    // БЕРЕМ ВЫБРАННЫЙ ГОД ИЗ VIEWMODEL, ЧТОБЫ ОН СОХРАНЯЛСЯ
+
     val state by viewModel.state
     val selectedYear = state.selectedTimelineYear
     
@@ -51,7 +51,7 @@ fun TimelineScreen(
         listState.scrollToItem(0)
     }
 
-    // Фильтрация достопримечательностей по году и сортировка по возрастанию даты
+
     val filteredSights = viewModel.sights
         .filter { sight -> sight.year >= selectedYear && sight.year < selectedYear + 50 }
         .sortedBy { it.year }
@@ -67,7 +67,7 @@ fun TimelineScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // --- ФИКСИРОВАННАЯ ВЕРХНЯЯ ЧАСТЬ (Заголовок и Линейка) ---
+
             Surface(
                 color = BackgroundSepia,
                 modifier = Modifier.fillMaxWidth()
@@ -89,13 +89,13 @@ fun TimelineScreen(
                     TimelineYearSelector(
                         years = years,
                         selectedYear = selectedYear,
-                        // ЗАПИСЫВАЕМ ГОД В VIEWMODEL ПРИ КЛИКЕ
+
                         onYearSelected = { viewModel.setTimelineYear(it) }
                     )
                 }
             }
 
-            // --- ПРОКРУЧИВАЕМАЯ ЧАСТЬ ---
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
@@ -155,7 +155,7 @@ fun TimelineScreen(
                             sight = sight,
                             onClick = {
                                 val originalIndex = viewModel.sights.indexOf(sight)
-                                // Передаем ScreenType.TIMELINE, чтобы кнопка назад знала, куда вернуться
+
                                 viewModel.setSelectedSight(originalIndex, ScreenType.TIMELINE)
                                 onNavigate(ScreenType.SIGHT_DETAILS)
                             }

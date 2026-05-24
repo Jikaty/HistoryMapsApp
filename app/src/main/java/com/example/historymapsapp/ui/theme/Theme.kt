@@ -31,7 +31,7 @@ fun HistoryMapsAppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Делаем статус-бар прозрачным для эффекта полного погружения
+
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             window.navigationBarColor = android.graphics.Color.TRANSPARENT
             

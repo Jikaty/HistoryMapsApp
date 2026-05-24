@@ -42,7 +42,7 @@ fun RoutesScreen(
     val allRoutes = RouteRepository.getRoutes()
     var selectedEra by remember { mutableStateOf("XVIII век") }
 
-    // Фильтруем маршруты в зависимости от выбранного чипа
+
     val filteredRoutes = allRoutes.filter { it.era == selectedEra }
 
     Scaffold(
@@ -141,7 +141,7 @@ fun RoutesScreen(
                 } else {
                     itemsIndexed(filteredRoutes) { _, route ->
                         RouteCard(route) {
-                            // Находим индекс в общем списке для ViewModel
+
                             val originalIndex = allRoutes.indexOf(route)
                             viewModel.selectRoute(originalIndex)
                             onNavigate(ScreenType.MAP)

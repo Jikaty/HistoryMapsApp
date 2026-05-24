@@ -379,7 +379,7 @@ class MapViewModel : ViewModel() {
     fun clearRoute() {
         _state.value = _state.value.copy(
             activeRoutePoints = null,
-            isNavigationActive = false // Сбрасываем навигацию при закрытии маршрута
+            isNavigationActive = false
         )
     }
 
@@ -412,7 +412,7 @@ class MapViewModel : ViewModel() {
         _state.value = _state.value.copy(
             isLoggedIn = true,
             userName = displayName,
-            recentRoutes = emptyList() // Маршруты пока не подтягиваем
+            recentRoutes = emptyList()
         )
     }
 

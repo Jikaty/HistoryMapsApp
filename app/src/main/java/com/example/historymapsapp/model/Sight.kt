@@ -10,5 +10,5 @@ data class Sight(
     val description: String = "",
     val reformHistory: String = "",
     val interestingFact: String = "",
-    val imageRes: Int = 0 // Сюда подставишь фото через R.drawable.имя
+    val imageRes: Int = 0
 )

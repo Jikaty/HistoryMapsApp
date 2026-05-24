@@ -17,9 +17,9 @@ class MainActivity : ComponentActivity() {
         
         super.onCreate(savedInstanceState)
         
-        // Инициализируем MapKit
+
         MapKitFactory.initialize(this)
-        // Для работы с маршрутами инициализируем TransportFactory
+
 
         
         val sharedPref = getPreferences(Context.MODE_PRIVATE)
