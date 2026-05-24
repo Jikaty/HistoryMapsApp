@@ -52,9 +52,12 @@ class SightDetailsDestination(
     }
 }
 
-class ProfileDestination(private val onNavigate: (ScreenType) -> Unit) : Screen {
+class ProfileDestination(
+    private val onNavigate: (ScreenType) -> Unit,
+    private val mapViewModel: MapViewModel
+) : Screen {
     @Composable
-    override fun Content() = ProfileScreen(onNavigate = onNavigate)
+    override fun Content() = ProfileScreen(onNavigate = onNavigate, viewModel = mapViewModel)
 }
 
 class TimelineDestination(
@@ -67,7 +70,7 @@ class TimelineDestination(
 
 class ScreenFactory(
     private val onNavigate: (ScreenType) -> Unit,
-    private val mapViewModel: MapViewModel  // ✅ Получаем ViewModel в конструктор
+    private val mapViewModel: MapViewModel
 ) {
 
     @Composable
@@ -77,7 +80,7 @@ class ScreenFactory(
             ScreenType.ROUTES -> RoutesDestination(onNavigate, mapViewModel)
             ScreenType.MAP -> MapDestination(onNavigate, mapViewModel)
             ScreenType.SIGHT_DETAILS -> SightDetailsDestination(onNavigate, mapViewModel)
-            ScreenType.PROFILE -> ProfileDestination(onNavigate)
+            ScreenType.PROFILE -> ProfileDestination(onNavigate, mapViewModel)
             ScreenType.TIMELINE -> TimelineDestination(onNavigate, mapViewModel)
         }
     }

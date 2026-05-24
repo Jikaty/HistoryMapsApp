@@ -11,14 +11,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -42,7 +39,11 @@ fun RoutesScreen(
     onNavigate: (ScreenType) -> Unit,
     viewModel: MapViewModel
 ) {
-    val routes = RouteRepository.getRoutes()
+    val allRoutes = RouteRepository.getRoutes()
+    var selectedEra by remember { mutableStateOf("XVIII век") }
+
+    // Фильтруем маршруты в зависимости от выбранного чипа
+    val filteredRoutes = allRoutes.filter { it.era == selectedEra }
 
     Scaffold(
         containerColor = BackgroundSepia,
@@ -58,16 +59,6 @@ fun RoutesScreen(
                         ),
                         color = TextDark
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Меню", tint = TextDark)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Search, contentDescription = "Поиск", tint = TextDark)
-                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = BackgroundSepia
@@ -124,24 +115,14 @@ fun RoutesScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item { EraChip(text = "XVIII век", isSelected = true) }
-                item { EraChip(text = "XIX век", isSelected = false) }
-                item { EraChip(text = "XX век", isSelected = false) }
-                item {
-                    Surface(
-                        modifier = Modifier.size(40.dp).clickable { },
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White.copy(alpha = 0.4f),
-                        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(id = android.R.drawable.ic_menu_sort_by_size),
-                                contentDescription = "Фильтры",
-                                modifier = Modifier.size(20.dp),
-                                tint = TextDark
-                            )
-                        }
+                val eras = listOf("XVIII век", "XIX век", "XX век")
+                eras.forEach { era ->
+                    item {
+                        EraChip(
+                            text = era,
+                            isSelected = selectedEra == era,
+                            onClick = { selectedEra = era }
+                        )
                     }
                 }
             }
@@ -151,10 +132,20 @@ fun RoutesScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                itemsIndexed(routes) { index, route ->
-                    RouteCard(route) {
-                        viewModel.selectRoute(index)  // ← Вот это главное!
-                        onNavigate(ScreenType.MAP)
+                if (filteredRoutes.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Маршрутов для этого века пока нет", color = Color.Gray)
+                        }
+                    }
+                } else {
+                    itemsIndexed(filteredRoutes) { _, route ->
+                        RouteCard(route) {
+                            // Находим индекс в общем списке для ViewModel
+                            val originalIndex = allRoutes.indexOf(route)
+                            viewModel.selectRoute(originalIndex)
+                            onNavigate(ScreenType.MAP)
+                        }
                     }
                 }
             }
@@ -163,12 +154,12 @@ fun RoutesScreen(
 }
 
 @Composable
-fun EraChip(text: String, isSelected: Boolean) {
+fun EraChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
         color = if (isSelected) DarkBlue else Color.White.copy(alpha = 0.4f),
         shape = RoundedCornerShape(20.dp),
         border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)),
-        modifier = Modifier.clickable { }
+        modifier = Modifier.clickable { onClick() }
     ) {
         Text(
             text = text,

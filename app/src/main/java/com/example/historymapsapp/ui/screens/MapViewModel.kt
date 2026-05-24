@@ -11,6 +11,9 @@ import com.example.historymapsapp.R
 import com.example.historymapsapp.ui.navigation.ScreenType
 import com.google.android.gms.location.*
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.geometry.Polyline
+
+data class RecentRoute(val title: String, val date: String, val imageRes: Int)
 
 data class MapState(
     val userLocation: Point? = null,
@@ -18,7 +21,13 @@ data class MapState(
     val selectedSightIndex: Int = 0,
     val sourceScreen: ScreenType = ScreenType.MAP,
     val selectedTimelineYear: Int = 1850,
-    val activeRoutePoints: List<Point>? = null
+    val activeRoutePoints: List<Point>? = null,
+    val customRouteIndices: List<Int> = emptyList(),
+    val isNavigationActive: Boolean = false,
+    val currentRouteGeometry: Polyline? = null,
+    val isLoggedIn: Boolean = false,
+    val userName: String? = null,
+    val recentRoutes: List<RecentRoute> = emptyList()
 )
 
 class MapViewModel : ViewModel() {
@@ -72,7 +81,7 @@ class MapViewModel : ViewModel() {
         Sight(
             "Академия наук", Point(59.9408, 30.3029),
             year = 1783,
-            description = "Академия наук была основана в 1724 году по инициативе Петра I. Её создание стало важным шагом в развитии науки, образования и инженерного дела в России.\n" +
+            description = "Академия наук была основана in 1724 году по инициативе Петра I. Её создание стало важным шагом в развитии науки, образования и инженерного дела в России.\n" +
                     "Пётр стремился превратить Петербург в интеллектуальный центр государства. В Академии работали выдающиеся европейские учёные, а позже именно здесь формировались основы российской научной школы.",
             reformHistory = "Реформы в сфере образования и науки сделали Петербург научным центром страны. Академия наук стала местом развития российской науки, инженерии и подготовки учёных нового поколения.",
             interestingFact = "В Академии наук работал знаменитый учёный Михаил Ломоносов — один из основателей российской науки.",
@@ -143,7 +152,7 @@ class MapViewModel : ViewModel() {
             imageRes = R.drawable.kazanskii_sobor
         ),
         Sight(
-            "Зимний дворец", Point(59.9409, 30.3129),
+            "Знимний дворец", Point(59.9409, 30.3129),
             year = 1754,
             description = "Зимний дворец был главной императорской резиденцией и центром политической жизни Российской империи. Именно здесь принимались важнейшие государственные решения и проводились реформы.\n" +
                     "Дворец отражал мощь империи и её стремление к европейскому уровню развития.",
@@ -218,7 +227,7 @@ class MapViewModel : ViewModel() {
         Sight(
             "Русский музей", Point(59.9388, 30.3324),
             year = 1895,
-            description = "Русский музей был основан в конце XIX века as первый государственный музей русского искусства. Его коллекция объединила произведения живописи, скульптуры и декоративного искусства со всей страны.\n" +
+            description = "Русский музей был основан in конце XIX века as первый государственный музей русского искусства. Его коллекция объединила произведения живописи, скульптуры и декоративного искусства со всей страны.\n" +
                     "Создание музея отражало рост интереса к национальной культуре и формирование культурной идентичности России.",
             reformHistory = "Развитие образования, искусства и общественной культуры сделало Петербург центром художественной жизни страны, а музей — важнейшим культурным пространством города.",
             interestingFact = "Коллекция Русского музея насчитывает более 400 тысяч произведений искусства — это крупнейшее собрание русского искусства в мире.",
@@ -245,7 +254,7 @@ class MapViewModel : ViewModel() {
         Sight(
             "Памятник Екатерине II", Point(59.9333, 30.3370),
             year = 1873,
-            description = "Памятник Екатерине II был установлен в честь императрицы, при которой Россия активно развивалась как европейская держава.\n" +
+            description = "Памятник Екатерине II был установлен in честь императрицы, при которой Россия активно развивалась как европейская держава.\n" +
                     "Вокруг монумента изображены государственные деятели, учёные и полководцы эпохи Просвещения.",
             reformHistory = "Политические и культурные реформы XVIII века укрепили роль Петербурга как центра науки, искусства и государственного управления.",
             interestingFact = "Высота памятника вместе с постаментом составляет около 15 метров, а вокруг императрицы расположены фигуры девяти выдающихся деятелей её эпохи.",
@@ -254,7 +263,7 @@ class MapViewModel : ViewModel() {
         Sight(
             "Набережная Мойки", Point(59.9318, 30.3077),
             year = 1760,
-            description = "Набережная реки Мойки стала одной из важнейших частей исторического центра Петербурга. Здесь располагались дворцы, особняки и дома известных деятелей культуры.\n" +
+            description = "Набережная реки Мойки стала одной из важнейших частей исторического центра Петербурга. Здесь располагавались дворцы, особняки и дома известных деятелей культуры.\n" +
                     "Район формировался как престижная городская территория.",
             reformHistory = "Градостроительные реформы и развитие городской инфраструктуры сделали набережные важной частью архитектурного облика Петербурга.",
             interestingFact = "На набережной Мойки находились дома многих известных писателей, музыкантов и аристократов Петербурга XIX века.",
@@ -328,20 +337,50 @@ class MapViewModel : ViewModel() {
     }
 
     fun selectRoute(index: Int) {
-        val pointsCount = when(index) {
-            0 -> 10
-            1 -> 12
-            2 -> 15
-            else -> sights.size
+        val targetIndices = when(index) {
+            0 -> listOf(0,1,2,3,4,5,6,7,8,9,10,11)
+            1 -> listOf(12,13,14,15,16,17,18,19,20)
+            2 -> listOf(21,22,23,24,25,26,27,28,29,30)
+            else -> emptyList()
         }
-        android.util.Log.d("MapViewModel", "selectRoute($index): выбрано $pointsCount достопримечательностей")
-        val routePoints = sights.take(pointsCount).map { it.location }
-        android.util.Log.d("MapViewModel", "routePoints размер: ${routePoints.size}")
+        val routePoints = if (targetIndices.isNotEmpty()) {
+            targetIndices.map { sights[it].location }
+        } else {
+            sights.map { it.location }
+        }
+        android.util.Log.d("MapViewModel", "selectRoute($index): выбрано ${routePoints.size} достопримечательностей по индексам")
         _state.value = _state.value.copy(activeRoutePoints = routePoints)
     }
 
+    fun setRouteGeometry(geometry: Polyline) {
+        _state.value = _state.value.copy(currentRouteGeometry = geometry)
+    }
+    fun startNavigation() {
+        _state.value = _state.value.copy(isNavigationActive = true)
+    }
+
+    fun stopNavigation() {
+        _state.value = _state.value.copy(isNavigationActive = false)
+    }
+    fun toggleSightInRoute(index: Int) {
+        val currentIndices = _state.value.customRouteIndices.toMutableList()
+        if (currentIndices.contains(index)) {
+            currentIndices.remove(index)
+        } else {
+            currentIndices.add(index)
+        }
+
+        val routePoints = if (currentIndices.isEmpty()) null else currentIndices.map { sights[it].location }
+        _state.value = _state.value.copy(
+            customRouteIndices = currentIndices,
+            activeRoutePoints = routePoints
+        )
+    }
     fun clearRoute() {
-        _state.value = _state.value.copy(activeRoutePoints = null)
+        _state.value = _state.value.copy(
+            activeRoutePoints = null,
+            isNavigationActive = false // Сбрасываем навигацию при закрытии маршрута
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -367,5 +406,21 @@ class MapViewModel : ViewModel() {
     fun getFormattedDistance(): String {
         val dist = _state.value.totalDistance
         return if (dist < 1000) "${dist.toInt()} м" else "%.1f км".format(dist / 1000)
+    }
+
+    fun loginSuccess(displayName: String) {
+        _state.value = _state.value.copy(
+            isLoggedIn = true,
+            userName = displayName,
+            recentRoutes = emptyList() // Маршруты пока не подтягиваем
+        )
+    }
+
+    fun logout() {
+        _state.value = _state.value.copy(
+            isLoggedIn = false,
+            userName = null,
+            recentRoutes = emptyList()
+        )
     }
 }

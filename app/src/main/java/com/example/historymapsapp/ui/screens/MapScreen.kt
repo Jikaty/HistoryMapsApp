@@ -38,22 +38,18 @@ import com.example.historymapsapp.ui.theme.DarkBlue
 import com.google.android.gms.location.LocationServices
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.directions.DirectionsFactory
-import com.yandex.mapkit.directions.driving.DrivingOptions
-import com.yandex.mapkit.directions.driving.DrivingRoute
-import com.yandex.mapkit.directions.driving.DrivingSession
-import com.yandex.mapkit.directions.driving.VehicleOptions
+import com.yandex.mapkit.directions.driving.*
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.MapObjectTapListener
-import com.yandex.mapkit.RequestPoint
-import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
-import com.yandex.mapkit.directions.driving.DrivingRouterType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +66,17 @@ fun MapScreen(
     val map = remember { mapView.mapWindow.map }
 
     var userLocationLayer by remember { mutableStateOf<UserLocationLayer?>(null) }
-
-    // Храним геометрию полученного маршрута, чтобы AndroidView мог её нарисовать
     var currentRouteGeometry by remember { mutableStateOf<Polyline?>(null) }
 
-    // Инициализируем автомобильный роутер (DirectionsFactory)
-    val drivingRouter = remember { DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE)}
+    val drivingRouter = remember { DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE) }
     var drivingSession by remember { mutableStateOf<DrivingSession?>(null) }
+
+    // Оптимизация: Кэшируем иконки маркеров, чтобы не пересоздавать Bitmaps при каждой рекомпозиции
+    val markerIcons = remember(viewModel.sights) {
+        viewModel.sights.indices.map { index ->
+            createNumberedMarker(index + 1)
+        }
+    }
 
     val tapListener = remember {
         MapObjectTapListener { mapObject, _ ->
@@ -89,7 +89,7 @@ fun MapScreen(
         }
     }
 
-    // Слушаем изменения активного маршрута из ViewModel
+    // Слушаем изменения активного маршрута
     LaunchedEffect(state.activeRoutePoints) {
         val points = state.activeRoutePoints
         android.util.Log.d("MapScreen", "activeRoutePoints изменился: ${points?.size} точек")
@@ -99,7 +99,7 @@ fun MapScreen(
                 RequestPoint(it, RequestPointType.WAYPOINT, null, null)
             }
 
-            drivingSession?.cancel() // Отменяем старый запрос, если он выполнялся
+            drivingSession?.cancel()
 
             drivingSession = drivingRouter.requestRoutes(
                 requestPoints,
@@ -107,12 +107,8 @@ fun MapScreen(
                 VehicleOptions(),
                 object : DrivingSession.DrivingRouteListener {
                     override fun onDrivingRoutes(routes: MutableList<DrivingRoute>) {
-                        android.util.Log.d("MapScreen", "Яндекс вернул ${routes.size} авто-маршрутов")
                         if (routes.isNotEmpty()) {
-                            // Сохраняем геометрию первого (самого оптимального) маршрута
                             currentRouteGeometry = routes[0].geometry
-
-                            // Фокусируем камеру на начало пути
                             map.move(
                                 CameraPosition(points[0], 14f, 0f, 0f),
                                 Animation(Animation.Type.SMOOTH, 0.8f),
@@ -127,12 +123,13 @@ fun MapScreen(
                 }
             )
         } else {
-            // Если маршрут сбросили
             drivingSession?.cancel()
+            drivingSession = null
             currentRouteGeometry = null
         }
     }
 
+    // Управление жизненным циклом MapKit
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -158,6 +155,7 @@ fun MapScreen(
         }
     }
 
+    // Разрешения на геопозицию
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -166,6 +164,24 @@ fun MapScreen(
             userLocationLayer?.isVisible = true
         }
     }
+
+    LaunchedEffect(state.userLocation, state.isNavigationActive) {
+        val userPoint = state.userLocation
+        if (state.isNavigationActive && userPoint != null) {
+            map.move(
+                CameraPosition(
+                    userPoint,
+                    17f,
+                    45f,
+                    0f
+                ),
+                Animation(Animation.Type.SMOOTH, 0.8f),
+                null
+            )
+        }
+    }
+
+
 
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -206,6 +222,9 @@ fun MapScreen(
                     mapView.apply {
                         map.setMapStyle(RETRO_MAP_STYLE)
 
+                        // Слушатель тапов регистрируем ОДИН раз здесь, а не в update
+                        map.mapObjects.addTapListener(tapListener)
+
                         val layer = MapKitFactory.getInstance().createUserLocationLayer(mapWindow)
                         layer.isVisible = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                         layer.isHeadingEnabled = true
@@ -222,11 +241,10 @@ fun MapScreen(
                 update = { view ->
                     val currentMap = view.mapWindow.map
 
-                    // Полностью очищаем карту перед рендером нового кадра данных
+                    // Очищаем только объекты (слушатель тапов на самой коллекции mapObjects при clear() не удаляется)
                     currentMap.mapObjects.clear()
-                    currentMap.mapObjects.addTapListener(tapListener)
 
-                    // 1. Отрисовка геометрии автомобильного маршрута, если она есть
+                    // 1. Отрисовка геометрии маршрута
                     currentRouteGeometry?.let { geometry ->
                         currentMap.mapObjects.addPolyline(geometry).apply {
                             strokeWidth = 5f
@@ -234,42 +252,88 @@ fun MapScreen(
                             outlineWidth = 1.5f
                             outlineColor = android.graphics.Color.WHITE
                         }
-                        android.util.Log.d("MapScreen", "Линия авто-маршрута добавлена на карту")
                     }
 
-                    // 2. Отрисовка всех достопримечательностей
+                    // 2. Отрисовка достопримечательностей с использованием закэшированных иконок
                     viewModel.sights.forEachIndexed { index, sight ->
-                        currentMap.mapObjects.addPlacemark(sight.location).apply {
-                            setIcon(createNumberedMarker(index + 1))
-                            userData = index
-                            addTapListener(tapListener)
+                        if (index < markerIcons.size) {
+                            currentMap.mapObjects.addPlacemark(sight.location).apply {
+                                setIcon(markerIcons[index])
+                                userData = index
+                                // Слушатель на уровне конкретного Placemark (опционально, так как есть общий на mapObjects)
+                                addTapListener(tapListener)
+                            }
                         }
                     }
                 }
             )
 
+            // UI поверх карты (информационная плашка)
             if (state.activeRoutePoints != null) {
                 Surface(
                     modifier = Modifier
                         .padding(16.dp)
+                        .fillMaxWidth(0.9f) // Сделаем плашку чуть шире для кнопки
                         .align(Alignment.TopCenter),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = Color.White.copy(alpha = 0.95f),
                     shadowElevation = 4.dp
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Маршрут активен", color = Color.Black)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = { viewModel.clearRoute() }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Сбросить", tint = Color.Red)
+                        Column {
+                            Text(
+                                text = if (state.isNavigationActive) "Навигация активна" else "Маршрут построен",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "Точек: ${state.activeRoutePoints?.size ?: 0}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Если навигация еще не запущена, показываем кнопку "СТАРТ"
+                            if (!state.isNavigationActive) {
+                                Button(
+                                    onClick = { viewModel.startNavigation() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkBlue),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text("Старт", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                // Если навигация запущена, можно показать кнопку "Стоп"
+                                Button(
+                                    onClick = { viewModel.stopNavigation() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text("Стоп", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.clearRoute() },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Сбросить", tint = Color.Red)
+                            }
                         }
                     }
                 }
             }
 
+            // Кнопка определения местоположения
             SmallFloatingActionButton(
                 onClick = {
                     val target = userLocationLayer?.cameraPosition()?.target ?: state.userLocation

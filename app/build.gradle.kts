@@ -6,7 +6,6 @@ plugins {
 
 android {
     namespace = "com.example.historymapsapp"
-    // Поднимаем до 36, как требуют библиотеки
     compileSdk = 36
 
     defaultConfig {
@@ -17,6 +16,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Яндекс требует указать Client ID в манифесте или здесь, но мы укажем в коде.
+        // Однако для работы SDK нужно, чтобы схема обратного вызова была прописана.
+        manifestPlaceholders["YANDEX_CLIENT_ID"] = "374f1906dcb94a888a2f84d81ecbc2d3"
     }
 
     buildTypes {
@@ -54,15 +57,18 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     
-    // ДОБАВЛЯЕМ расширенные иконки для MyLocation и NearMe
     implementation("androidx.compose.material:material-icons-extended")
-
+    implementation("com.yandex.android:authsdk:3.1.0") // Проверьте последнюю версию, если необходимо
     // Yandex Maps SDK
     implementation(libs.yandex.maps)
     // Location
     implementation(libs.play.services.location)
     
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    // Оставляем Google на всякий случай, но Яндекс будет приоритетом
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

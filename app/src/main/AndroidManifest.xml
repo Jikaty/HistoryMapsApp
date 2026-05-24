@@ -17,10 +17,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HistoryMapsApp">
 
-
         <meta-data
             android:name="com.yandex.android.maps.API_KEY"
             android:value="ac475df4-01de-4573-83eb-61e565e78d17" />
+        <meta-data
+            android:name="com.yandex.authsdk.CLIENT_ID"
+            android:value="${YANDEX_CLIENT_ID}" />
 
         <activity
             android:name=".MainActivity"
@@ -30,6 +32,14 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Схема для входа через Яндекс -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yx374f1906dcb94a888a2f84d81ecbc2d3" />
             </intent-filter>
         </activity>
     </application>
