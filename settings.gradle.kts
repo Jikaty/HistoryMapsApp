@@ -16,6 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url = uri("https://maven.yandex.cloud/nexus/content/repositories/releases/")
+        }
     }
 }
 

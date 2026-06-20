@@ -1,0 +1,13 @@
+package com.example.historymapsapp.model
+
+import androidx.annotation.DrawableRes
+
+data class Route(
+    val title: String,
+    val distance: String,
+    val points: Int,
+    val time: String,
+    @DrawableRes val imageRes: Int,
+    val era: String = "XVIII век",
+    val sightIndices: List<Int> = emptyList()
+)
